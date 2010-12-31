@@ -270,7 +270,6 @@ void extract_features_and_display(IplImage* img, asm_shape shape){
 	//cvShowImage(TRACKER_WINDOW_NAME, img);
 }
 
-
 void initialize(IplImage* img, int iFrame){
 	if(iFrame >= 5) {
 		for(int iFeature = 0; iFeature < N_FEATURES; iFeature++){
@@ -435,6 +434,19 @@ bool menu1(IplImage* img){	//select to create or read class
 	return create;
 }
 
+string getKey(string word, char key){
+	if(key == 27){			
+		exit(1);
+	}
+	else if(key == 8 && word.size()>0){
+		word.pop_back();
+	}
+	else if(word.size()<20 && ((key>='a' && key<='z') || (key>='A' && key<='Z') || (key>='0' && key<='9' || (key=='_')))){
+		word.push_back(key);
+	}
+	return word;
+}
+
 string menu2(IplImage* img, bool create){
 	CvScalar expColor = cvScalar(0,0,0);
 	CvScalar mark = cvScalar(255,255,0);
@@ -449,21 +461,14 @@ string menu2(IplImage* img, bool create){
 			cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
 			cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
 			cvShowImage(TRACKER_WINDOW_NAME, print);
-
 			char key = cvWaitKey();
-			if(key == 27){			
-				exit(1);
-			}
-			else if(key == 13){
+			if(key != 13){
+				filename = getKey(filename, key);
+			}	
+			else{
 				filename = "../classes/" + filename + ".txt"; 
 				break;
-			}
-			else if(key == 8 && filename.size()>0){
-				filename.pop_back();
-			}
-			else if((key>='a' && key<='z') || (key>='A' && key<='Z')){
-				filename.push_back(key);
-			}
+			}		
 		}while(1);
 	}
 	else{
