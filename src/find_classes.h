@@ -43,13 +43,7 @@ void read_config_from_file(string filename){
 	classPointArray = new double[N_POINTS*N_FEATURES];	//read feature values for each class from file
 	for(int i=0 ; i<N_POINTS*N_FEATURES ; i++){
 		file >> classPointArray[i];
-	}/*
-	for(int i=0 ; i<N_POINTS ; i++){
-		for(int j=0 ; j<N_FEATURES ; j++){
-			cout << classPointArray[i*N_FEATURES+j] << " ";
-		}
-		cout << endl;
-	}*/
+	}
 
 	file.close();
 
@@ -57,30 +51,33 @@ void read_config_from_file(string filename){
 	classPoints = cv::Mat(N_POINTS, N_FEATURES, CV_64FC1, classPointArray);
 	classDistances = cv::Mat(N_POINTS, 1, CV_64FC1);
 	diff = cv::Mat(1, N_FEATURES, CV_64FC1);
-	/*for(int i=0 ; i<N_POINTS ; i++){
-		for(int j=0 ; j<N_FEATURES ; j++){
-			cout << classPoints.at<double>(i,j) << " ";
-		}
-		cout << endl;
-	}*/
 }
 
-void config(string filename){
+char * str2cca(string a){
+	char* buf = new char[a.size()];
+	sprintf(buf, "%100c", a);
+	return buf;
+}
+
+void config(string filename, int n_expressions, int n_samples, string *exp_names){
 	ofstream file(filename, ios::out);
 	if(!file.is_open()){
 		cout << "error opening file: " << filename << endl;
 		exit(1);
 	}
 
-	cin >> N_EXPRESSIONS;
-	cin >> N_SAMPLES;
+	N_EXPRESSIONS = n_expressions;
+	N_SAMPLES = n_samples;
 	file << N_EXPRESSIONS << endl << N_SAMPLES << endl;
+	cout << N_EXPRESSIONS << endl << N_SAMPLES << endl;
 	N_POINTS = N_EXPRESSIONS * N_SAMPLES;
 
-	EXP_NAMES = new char*[N_EXPRESSIONS];	//read expression names from file
+	EXP_NAMES = new char*[N_EXPRESSIONS];
 	for(int i=0 ; i<N_EXPRESSIONS ; i++){
-		EXP_NAMES[i] = new char[11];
-		cin >> EXP_NAMES[i];
+		cout<< exp_names[i] << endl;
+		cout<< strdup(exp_names[i].c_str()) << endl;
+		
+		EXP_NAMES[i] = strdup(exp_names[i].c_str());	
 		file << EXP_NAMES[i] << endl;
 	}
 	

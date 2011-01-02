@@ -5,12 +5,6 @@
 
 using namespace std;
 
-const char * str2cca(string a){
-	char* buf = new char[a.size()];
-	sprintf(buf, "%100c", a);
-	return buf;
-}
-
 static void usage_fit()		//gerektiðinde deðiþtir
 {
 	printf("Usage: fit -m model_file -h cascade_file "		//shape model falan eklenmesi lazým

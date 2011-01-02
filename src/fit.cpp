@@ -441,7 +441,7 @@ string getKey(string word, char key){
 	else if(key == 8 && word.size()>0){
 		word.pop_back();
 	}
-	else if(word.size()<20 && ((key>='a' && key<='z') || (key>='A' && key<='Z') || (key>='0' && key<='9' || (key=='_')))){
+	else if(word.size()<10 && ((key>='a' && key<='z') || (key>='A' && key<='Z') || (key>='0' && key<='9' || (key=='_')))){
 		word.push_back(key);
 	}
 	return word;
@@ -453,23 +453,75 @@ string menu2(IplImage* img, bool create){
 	IplImage* print = cvCreateImage( cvSize(img->width, img->height ), img->depth, img->nChannels );
 	int selection = 0, range, step = 15, current = 12;
 	string filename;
-	
+	char key; 
+
 	if(create){
 		do{
 			cvCopy(img, print);
-			//cvRectangle(print, cvPoint(0, 23+selection*step), cvPoint(319, 20+selection*step), mark, 12);
 			cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
 			cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
 			cvShowImage(TRACKER_WINDOW_NAME, print);
-			char key = cvWaitKey();
+			key = cvWaitKey();
 			if(key != 13){
 				filename = getKey(filename, key);
 			}	
-			else{
-				filename = "../classes/" + filename + ".txt"; 
+			else if(filename.size() > 0){	//filename empty deðilse yap
 				break;
 			}		
 		}while(1);
+		
+		string numOfExprStr = "Number Of Expressions: ";
+		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+		cvShowImage(TRACKER_WINDOW_NAME, print);
+		do{
+			key = cvWaitKey();
+		}while(key<'2' || key>'9');
+		numOfExprStr.push_back(key);
+		int numOfExpr = key -'0';
+		cout << numOfExpr << endl;
+
+		string numOfSampStr = "Number Of Samples per Expression: ";
+		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+		cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+		
+		cvShowImage(TRACKER_WINDOW_NAME, print);
+		do{
+			key = cvWaitKey();
+		}while(key<'2' || key>'9');
+		numOfSampStr.push_back(key);
+		int numOfSamp = key -'0';
+		cout << numOfSamp << endl;
+
+		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+		cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+		cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
+		
+		string *exprNames = new string[numOfExpr];
+		for(int i=0 ; i<numOfExpr ; i++){
+			do{
+				cvCopy(img, print);
+				cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
+				cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
+				cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+				cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+				cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
+				for(int j=0 ; j<numOfExpr ; j++){
+					cvPutText(print, exprNames[j].c_str(), cvPoint(5, current+(step*(6+j))), &font, expColor);
+				}
+				cvShowImage(TRACKER_WINDOW_NAME, print);
+				key = cvWaitKey();
+				if(key != 13){
+					exprNames[i] = getKey(exprNames[i], key);
+				}	
+				else if(exprNames[i].size() > 0){	//expression name empty deðilse yap
+					break;
+				}		
+			}while(1);
+			cout << exprNames[i] << endl;
+		}
+		filename = "../classes/" + filename + ".txt"; 
+		cout << filename << endl;
+		config(filename, numOfExpr, numOfSamp, exprNames);
 	}
 	else{
 		filelists files = ScanNSortDirectory("../classes","txt");
@@ -931,11 +983,11 @@ show:
 				
 			// fit_asm.Draw(image, shapeCopy);
 			extract_features_and_display(image, shapeCopy);
-			if(j < FRAME_TO_START_DECISION)			{	initialize(image, j);																	}
-			else if(j == FRAME_TO_START_DECISION)	{	normalizeFeatures(); if(create) config(filename); else read_config_from_file(filename); } 
-			else if(numFeats < N_POINTS && create)	{	numFeats = write_features(filename, j, numFeats, image);								}
-			else if(numFeats == N_POINTS && create) {	read_config_from_file(filename); numFeats++;											}
-			else									{	track(image);																			}
+			if(j < FRAME_TO_START_DECISION)			{	initialize(image, j);												}
+			else if(j == FRAME_TO_START_DECISION)	{	normalizeFeatures(); if(!create) read_config_from_file(filename);	} 
+			else if(numFeats < N_POINTS && create)	{	numFeats = write_features(filename, j, numFeats, image);			}
+			else if(numFeats == N_POINTS && create) {	read_config_from_file(filename); numFeats++;						}
+			else									{	track(image);														}
 
 show2:
 			// fit_asm.Draw(edges, shape);
