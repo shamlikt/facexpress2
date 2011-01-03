@@ -267,7 +267,6 @@ void extract_features_and_display(IplImage* img, asm_shape shape){
 	++iFeature;
 
 	cvFree(faceComponent);
-	//cvShowImage(TRACKER_WINDOW_NAME, img);
 }
 
 void initialize(IplImage* img, int iFrame){
@@ -287,11 +286,11 @@ void initialize(IplImage* img, int iFrame){
 		if(iFrame%5 != 0)
 			cvPutText(img, "Initializing... Do neutral expression please.", cvPoint(5, 12), &font, expColor);		
 		
-		cvShowImage(TRACKER_WINDOW_NAME, img);
 	}
 }
 
-void normalizeFeatures(){
+void normalizeFeatures(IplImage* img){
+	cvFlip(img, NULL, 1);
 	for(int iFeature = 0; iFeature < N_FEATURES; iFeature++)
 		featureScales.at<float>(0,iFeature) = 1 / featureScales.at<float>(0,iFeature);
 }
@@ -346,8 +345,6 @@ void track(IplImage* img){
 				cvPutText(img, buf, cvPoint(5, current), &font, expColor);
 			}
 		}
-		
-		cvShowImage(TRACKER_WINDOW_NAME, img);	//videoyu(resmi) göster
 	}
 
 }
@@ -389,7 +386,6 @@ int write_features(string filename, int j, int numFeats, IplImage* img){
 		cvPutText(img, buf, cvPoint(5, 57), &font, expColor);
 	}
 	
-	cvShowImage(TRACKER_WINDOW_NAME, img);
 	return numFeats;
 }
 
@@ -410,28 +406,55 @@ int select(int selection, int range){
 	return selection;
 }
 
-bool menu1(IplImage* img){	//select to create or read class
-	bool create;
+int selectionMenu(IplImage* img, string title, vector<string> lines){
 	CvScalar expColor = cvScalar(0,0,0);
 	CvScalar mark = cvScalar(255,255,0);
+	int selection = 0, range = lines.size(), step = 15, current = 12;
 	IplImage* print = cvCreateImage( cvSize(img->width, img->height ), img->depth, img->nChannels );
-	int selection = 0, range = 2, step = 15, current = 12;
-
 	do{
+		current=12;
 		cvCopy(img, print);
-		cvRectangle(print, cvPoint(0, 8+selection*step), cvPoint(319, 5+selection*step), mark, 12);
-		cvPutText(print, "Read Expression Class From File", cvPoint(5, current), &font, expColor);
-		cvPutText(print, "Create New Expression Class", cvPoint(5, current+step), &font, expColor);
+		if(title != ""){
+			cvPutText(print, title.c_str(), cvPoint(5, current), &font, expColor);
+			current+=step;
+		}
+		
+		cvRectangle(print, cvPoint(0, current-4+selection*step), cvPoint(319, current-7+selection*step), mark, 12);
+		
+		for(int i=0 ; i<range; i++){
+			cvPutText(print, lines.at(i).c_str(), cvPoint(5, current), &font, expColor);
+			current += step;
+		}
+
 		cvShowImage(TRACKER_WINDOW_NAME, print);
 		selection = select(selection, range);
 		if(selection>=range){
-			selection -= range;
-			if(selection == 0) create=false;
-			else create=true;
-			break;
+			return selection - range;
 		}
 	}while(1);
-	return create;
+}
+
+string createUser(){
+	return "";
+}
+
+string selectUser(IplImage* img){
+	vector<string> userList = directoriesOf("../users/");
+	userList.push_back("Create New User");
+	int selection = selectionMenu(img, "Select or Create User", userList);
+	return userList.at(selection);
+}
+
+string menu1(IplImage* img, string userName){	//select to create or read class
+	vector<string> files = ScanNSortDirectory(("../users/" + userName).c_str(), "txt");
+	vector<string> lines;
+	for(int i=0 ; i<files.size() && i<20 ; i++){
+		lines.push_back(files.at(i).substr(10+userName.size(),files.at(i).size()-14-userName.size()));
+	}
+	lines.push_back("Create New Expression Class");
+	files.push_back("Create New Expression Class");
+	int selection = selectionMenu(img, "Select or Create Expression Class", lines);
+	return files.at(selection);
 }
 
 string getKey(string word, char key){
@@ -447,118 +470,88 @@ string getKey(string word, char key){
 	return word;
 }
 
-string menu2(IplImage* img, bool create){
+string createClassMenu(IplImage* img, string userName){
 	CvScalar expColor = cvScalar(0,0,0);
 	CvScalar mark = cvScalar(255,255,0);
 	IplImage* print = cvCreateImage( cvSize(img->width, img->height ), img->depth, img->nChannels );
-	int selection = 0, range, step = 15, current = 12;
+	int step = 15, current = 12;
 	string filename;
 	char key; 
 
-	if(create){
+	do{
+		cvCopy(img, print);
+		cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
+		cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
+		cvShowImage(TRACKER_WINDOW_NAME, print);
+		key = cvWaitKey();
+		if(key != 13){
+			filename = getKey(filename, key);
+		}	
+		else if(filename.size() > 0){	//filename empty deðilse yap
+			break;
+		}		
+	}while(1);
+		
+	string numOfExprStr = "Number Of Expressions: ";
+	cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+	cvShowImage(TRACKER_WINDOW_NAME, print);
+	do{
+		key = cvWaitKey();
+	}while(key<'2' || key>'9');
+	numOfExprStr.push_back(key);
+	int numOfExpr = key -'0';
+	cout << numOfExpr << endl;
+
+	string numOfSampStr = "Number Of Samples per Expression: ";
+	cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+	cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+		
+	cvShowImage(TRACKER_WINDOW_NAME, print);
+	do{
+		key = cvWaitKey();
+	}while(key<'2' || key>'9');
+	numOfSampStr.push_back(key);
+	int numOfSamp = key -'0';
+	cout << numOfSamp << endl;
+
+	cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+	cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+	cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
+		
+	string *exprNames = new string[numOfExpr];
+	for(int i=0 ; i<numOfExpr ; i++){
 		do{
 			cvCopy(img, print);
 			cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
 			cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
+			cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
+			cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
+			cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
+			for(int j=0 ; j<numOfExpr ; j++){
+				cvPutText(print, exprNames[j].c_str(), cvPoint(5, current+(step*(6+j))), &font, expColor);
+			}
 			cvShowImage(TRACKER_WINDOW_NAME, print);
 			key = cvWaitKey();
 			if(key != 13){
-				filename = getKey(filename, key);
+				exprNames[i] = getKey(exprNames[i], key);
 			}	
-			else if(filename.size() > 0){	//filename empty deðilse yap
+			else if(exprNames[i].size() > 0){	//expression name empty deðilse yap
 				break;
 			}		
 		}while(1);
-		
-		string numOfExprStr = "Number Of Expressions: ";
-		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
-		cvShowImage(TRACKER_WINDOW_NAME, print);
-		do{
-			key = cvWaitKey();
-		}while(key<'2' || key>'9');
-		numOfExprStr.push_back(key);
-		int numOfExpr = key -'0';
-		cout << numOfExpr << endl;
-
-		string numOfSampStr = "Number Of Samples per Expression: ";
-		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
-		cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
-		
-		cvShowImage(TRACKER_WINDOW_NAME, print);
-		do{
-			key = cvWaitKey();
-		}while(key<'2' || key>'9');
-		numOfSampStr.push_back(key);
-		int numOfSamp = key -'0';
-		cout << numOfSamp << endl;
-
-		cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
-		cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
-		cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
-		
-		string *exprNames = new string[numOfExpr];
-		for(int i=0 ; i<numOfExpr ; i++){
-			do{
-				cvCopy(img, print);
-				cvPutText(print, "Enter filename to create a new file.", cvPoint(5, current), &font, expColor);
-				cvPutText(print, filename.c_str(), cvPoint(5, current+step), &font, expColor);
-				cvPutText(print, numOfExprStr.c_str(), cvPoint(5, current+step*2), &font, expColor);
-				cvPutText(print, numOfSampStr.c_str(), cvPoint(5, current+step*3), &font, expColor);
-				cvPutText(print, "Expression Names:", cvPoint(5, current+step*5), &font, expColor);
-				for(int j=0 ; j<numOfExpr ; j++){
-					cvPutText(print, exprNames[j].c_str(), cvPoint(5, current+(step*(6+j))), &font, expColor);
-				}
-				cvShowImage(TRACKER_WINDOW_NAME, print);
-				key = cvWaitKey();
-				if(key != 13){
-					exprNames[i] = getKey(exprNames[i], key);
-				}	
-				else if(exprNames[i].size() > 0){	//expression name empty deðilse yap
-					break;
-				}		
-			}while(1);
-			cout << exprNames[i] << endl;
-		}
-		filename = "../classes/" + filename + ".txt"; 
-		cout << filename << endl;
-		config(filename, numOfExpr, numOfSamp, exprNames);
+		cout << exprNames[i] << endl;
 	}
-	else{
-		filelists files = ScanNSortDirectory("../classes","txt");
-		range = files.size();
-		do{
-			current = 12;
-			cvCopy(img, print);
-			cvRectangle(print, cvPoint(0, 23+selection*step), cvPoint(319, 20+selection*step), mark, 12);
-			cvPutText(print, "Please select the file.", cvPoint(5, current), &font, expColor);
-			for(int i=0 ; i<files.size() && i<20 ; i++){
-				current += step;
-				cvPutText(print, files.at(i).substr(11,files.at(i).size()-15).c_str(), cvPoint(5, current), &font, expColor);
-			}
-			cvShowImage(TRACKER_WINDOW_NAME, print);
-			selection = select(selection, range);
-			cout << selection << endl;
-			if(selection>=range){
-				selection -= range;
-				filename = files.at(selection);
-				break;
-			}
-		}while(1);
-	}
-	cout << filename << endl;
+	filename = "../users/" + userName + "/" + filename + ".txt"; 
+	config(filename, numOfExpr, numOfSamp, exprNames);
 	return filename;
 }
-	
-	
-
-
 
 int main(int argc, char *argv[])
 {
 	asmfitting fit_asm;
-	char* model_name = NULL;
+	char* model_name = "../users/generic/generic.amf";
 	//char* shape_model_name = NULL;
-	char* cascade_name= NULL;
+	char* cascade_name = "../cascades/haarcascade_frontalface_alt2.xml";
 	char* filename = NULL;
 	char* shape_output_filename = NULL;
 	char* pose_output_filename = NULL;
@@ -648,34 +641,15 @@ int main(int argc, char *argv[])
 			usage_fit();
 		}
 	}
-
+	
 	if(fit_asm.Read(model_name) == false)
 		return -1;
 	
 	if(init_detect_cascade(cascade_name) == false)
 		return -1;
 
-	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.4, 0.4, 0, 1, CV_AA);
 
-	asm_shape meanShape = fit_asm.GetModel()->GetMeanShape();
-	//CvMat* sampleMatPtr;
-	//sampleMatPtr = (CvMat*)cvLoad(shape_model_name);
-	//cv::Mat sampleMat(sampleMatPtr);
-	int nPoints = meanShape.NPoints();
-	//int nShapes = sampleMat.rows;
-	//cv::PCA pca( sampleMat, cv::Mat(), CV_PCA_DATA_AS_ROW, maxComponents);
-
-
-	// case 1: process image, we can process multi-person image alignment
-	// also you can process single face alignment by coding like this
-	// asm_shape detshape, shape;	
-	// bool flag = face_detect.DetectCentralFace(detshape, image);
-	// if(flag) asm_common::InitShapeFromDetBox(shape, detshape, 
-	//		fit_asm.GetMappingDetShape(), fit_asm.GetMeanFaceWidth());
-	// fit_asm.Fitting(shape, image, n_iteration);
-	// shape.Write(stdout); //print result
-	// for(int l = 0; l < shape.NPoints(); l++)
-	//		printf("(%g, %g) ", shape[i].x, shape[i].y);
+	// case 1: process image
 	if(image_or_video == 'i')
 	{
 		IplImage * image = cvLoadImage(filename, 1);
@@ -839,29 +813,9 @@ int main(int argc, char *argv[])
 				countFramesUnderThreshold = (countFramesUnderThreshold + 1) % MAX_FRAMES_UNDER_THRESHOLD;
 			}
 
-			// Compute Pose Parameters
-			shapeAligned = shapeCopy;
-			shapeAligned.AlignTo(meanShape);
-			for(int k=0; k < shapeAligned.NPoints(); k++) {
-//				shapeParams.at<float>(0,2*k) = shapeAligned[k].x;
-//				shapeParams.at<float>(0,2*k+1) = shapeAligned[k].y;
-			}
-			//pca.project(shapeParams, poseParams);
-			//pca.backProject(poseParams, shapeParams);
-
-			for(int k=0; k < shape.NPoints(); k++) {
-//				shapeAligned[k].x = shapeParams.at<float>(0,2*k);
-//				shapeAligned[k].y = shapeParams.at<float>(0,2*k+1);
-			}
-			
-			if (NORMALIZE_POSE_PARAMS)
-				for(int k=0; k < maxComponents; k++) {
-//					poseParams.at<float>(0,k) /= sqrt(pca.eigenvalues.at<float>(0,k));
-				}
-
 			extract_features_and_display(image, shapeCopy);
 			if(j < FRAME_TO_START_DECISION) initialize(image, j);
-			if(j == FRAME_TO_START_DECISION) normalizeFeatures();
+			if(j == FRAME_TO_START_DECISION) normalizeFeatures(image);
 			if(j >= FRAME_TO_START_DECISION) track(image);
 //			if(shape_output_filename != NULL) write_vector(shapeParams, fpShape);
 //			if(pose_output_filename != NULL) write_vector(poseParams, fpPose);
@@ -891,10 +845,34 @@ show:
 	// case 3: process camera
 	else if(use_camera)
 	{
+		int numFeats = 0;
+		boolean create = false;
+		IplImage* image; 
+
+		if(CAM_WIDTH==640) image = cvLoadImage("../images/facexpressL.png");
+		else image = cvLoadImage("../images/facexpress.png");
+		
+		string userName = selectUser(image);
+		if(userName == "Create New User"){
+			userName = createUser();
+		}
+
+		model_name = strdup(("../users/" + userName + "/" + userName + ".amf").c_str());
+		if(fit_asm.Read(model_name) == false)
+			return -1;
+
+		meanShape = fit_asm.GetModel()->GetMeanShape();
+		nPoints = meanShape.NPoints();
+
+		string filename = menu1(image, userName);
+		if(filename == "Create New Expression Class"){
+			create = true;
+			filename = createClassMenu(image, userName);
+		}
+		
 		asm_shape shape, detshape;
 		bool flagFace = false, flagShape = false;
-		int countFramesUnderThreshold = 0;
-		IplImage* image;  
+		int countFramesUnderThreshold = 0; 
 		int j = 0, key;
 				
 		if(open_camera(0, CAM_WIDTH, CAM_HEIGHT) == false)
@@ -906,13 +884,8 @@ show:
 		//shapeParams.create(1, nPoints*2, sampleMat.type());
 		//poseParams.create(1, maxComponents, sampleMat.type());
 
-		int numFeats = 0;
 		
-		if(CAM_WIDTH==640) image = cvLoadImage("../images/facexpressL.png");
-		else image = cvLoadImage("../images/facexpress.png");
 		
-		bool create = menu1(image);
-		string filename = menu2(image,create);
 
 		while(1)
 		{
@@ -950,10 +923,6 @@ show:
 			}
 			shapeCopy = get_weighted_mean(shapes, N_SHAPES_FOR_FILTERING);	//son frame'in etkisi fazla, ilk frame'in etkisi az
 
-			//If success, we draw and show its result
-			if(flagShape && showShape){ 
-				fit_asm.Draw(image, shapeCopy);
-			}
 			if(!flagShape) {		//napýyoruz anlamadým false ya da true yapmak neyi deðiþtiriyo, döngü baþýnda deðeri deðiþiyo zaten
 				if(countFramesUnderThreshold == 0)
 					flagShape = false;
@@ -961,33 +930,21 @@ show:
 					flagShape = true;
 				countFramesUnderThreshold = (countFramesUnderThreshold + 1) % MAX_FRAMES_UNDER_THRESHOLD;
 			}
-			// Compute Pose Parameters
-			shapeAligned = shapeCopy;
-			shapeAligned.AlignTo(meanShape);	//niye align ediyoruz zaten align edilmiþ deðil mi?
-			for(int k=0; k < shapeAligned.NPoints(); k++) {
-//				shapeParams.at<float>(0,2*k) = shapeAligned[k].x;
-//				shapeParams.at<float>(0,2*k+1) = shapeAligned[k].y;
-			}
-			//pca.project(shapeParams, poseParams);
-			//pca.backProject(poseParams, shapeParams);
-
-			for(int k=0; k < shape.NPoints(); k++) {
-//				shapeAligned[k].x = shapeParams.at<float>(0,2*k);
-//				shapeAligned[k].y = shapeParams.at<float>(0,2*k+1);
-			}
 			
-			if (NORMALIZE_POSE_PARAMS)
-				for(int k=0; k < maxComponents; k++) {
-					//poseParams.at<float>(0,k) /= sqrt(pca.eigenvalues.at<float>(0,k));
-				}
-				
-			// fit_asm.Draw(image, shapeCopy);
 			extract_features_and_display(image, shapeCopy);
-			if(j < FRAME_TO_START_DECISION)			{	initialize(image, j);												}
-			else if(j == FRAME_TO_START_DECISION)	{	normalizeFeatures(); if(!create) read_config_from_file(filename);	} 
-			else if(numFeats < N_POINTS && create)	{	numFeats = write_features(filename, j, numFeats, image);			}
-			else if(numFeats == N_POINTS && create) {	read_config_from_file(filename); numFeats++;						}
-			else									{	track(image);														}
+			if(j < FRAME_TO_START_DECISION)			{	initialize(image, j);													}
+			else if(j == FRAME_TO_START_DECISION)	{	normalizeFeatures(image); if(!create) read_config_from_file(filename);	} 
+			else if(numFeats < N_POINTS && create)	{	numFeats = write_features(filename, j, numFeats, image);				}
+			else if(numFeats == N_POINTS && create) {	read_config_from_file(filename); numFeats++;							}
+			else									{	track(image);															}
+
+			if(flagShape && showShape){ 
+				cvFlip(image, NULL, 1);
+				fit_asm.Draw(image, shapeCopy);
+				cvFlip(image, NULL, 1);
+			}
+
+			cvShowImage(TRACKER_WINDOW_NAME, image);
 
 show2:
 			// fit_asm.Draw(edges, shape);
@@ -995,7 +952,13 @@ show2:
 			key = cvWaitKey(20);           // wait 20 ms
 			if(key == 27)
 				break;
-			if(key == 's') {			//KALDIRALIM MI?
+			else if(key == 'r'){
+				showRegionsOnGui = -1*showRegionsOnGui + 1;
+			}
+			else if(key == 't'){
+				showShape = -1*showShape + 1;
+			}
+			else if(key == 's'){			//KALDIRACAÐIZ
 				for(int i=0; i<N_FEATURES; i++)
 					printf("%3.2f, ", features.at<float>(0,i));
 				printf("\n");

@@ -43,9 +43,7 @@ static filelists ScanNSortDirectory(const char*path, const char*extension)
 	handle = FindFirstFile(search_path.c_str(), &wfd);
 	if (INVALID_HANDLE_VALUE == handle)
     {
-		fprintf(stderr, "ERROR(%s, %d): Cannot find (*.%s)files in directory %s\n",
-			__FILE__, __LINE__, extension, path);
-		exit(0);
+		return allfiles;
     }
     do
     {
@@ -71,9 +69,7 @@ static filelists ScanNSortDirectory(const char*path, const char*extension)
 	dir = opendir(path);
 	if(dir == NULL)	
 	{
-		fprintf(stderr, "ERROR(%s, %d): Can not open directory %s\n", 
-			__FILE__, __LINE__, path);
-		exit(0);
+		return allfiles;
 	}
 
 	while(d = readdir(dir))
@@ -88,6 +84,79 @@ static filelists ScanNSortDirectory(const char*path, const char*extension)
 				allfiles.push_back(string(fullpath));
 				n++;
 			}
+		}
+
+	}
+	closedir(dir);
+#endif
+
+	// sort the filenames
+    qsort((void *)&(allfiles[0]), (size_t)n, sizeof(string), str_compare);
+
+    return allfiles;
+}
+
+
+static filelists directoriesOf(const char*path)
+{
+#ifdef WIN32
+    WIN32_FIND_DATA wfd;
+    HANDLE handle;
+    string search_path, search_file;
+#else
+	struct dirent *d;
+	DIR* dir;
+	struct stat s;
+	char fullpath[1024];
+#endif
+    filelists allfiles;
+	int n = 0;
+
+#ifdef  WIN32   
+	search_path = string(path) + "/*";
+	handle = FindFirstFile(search_path.c_str(), &wfd);
+	if (INVALID_HANDLE_VALUE == handle)
+    {
+		return allfiles;
+    }
+    do
+    {
+        if (wfd.cFileName[0] == '.')
+        {
+            continue;
+        }
+		if (wfd.cFileName[0] == '..')
+        {
+            continue;
+        }
+        if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            search_file = string(wfd.cFileName);
+			allfiles.push_back(search_file);
+			n++;
+	    }
+        else
+        {
+			continue;
+		}
+    }while (FindNextFile(handle, &wfd));
+
+    FindClose(handle);
+#else
+	
+	dir = opendir(path);
+	if(dir == NULL)	
+	{
+		return allfiles;
+	}
+
+	while(d = readdir(dir))
+	{
+		sprintf(fullpath, "%s/%s", path, d->d_name);
+		if(stat(fullpath, &s) == -1 && d->d_name!="." && d->d_name!="..")
+		{
+			allfiles.push_back(string(fullpath));
+			n++;
 		}
 
 	}
