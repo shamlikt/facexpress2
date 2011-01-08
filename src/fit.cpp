@@ -422,6 +422,7 @@ int selectionMenu(IplImage* img, string title, vector<string> lines){
 		cvRectangle(print, cvPoint(0, current-4+selection*step), cvPoint(319, current-7+selection*step), mark, 12);
 		
 		for(int i=0 ; i<range; i++){
+			cout << lines.at(i).c_str() << endl;
 			cvPutText(print, lines.at(i).c_str(), cvPoint(5, current), &font, expColor);
 			current += step;
 		}
@@ -648,6 +649,7 @@ int main(int argc, char *argv[])
 	if(init_detect_cascade(cascade_name) == false)
 		return -1;
 
+	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.4, 0.4, 0, 1, CV_AA);
 
 	// case 1: process image
 	if(image_or_video == 'i')
@@ -861,8 +863,8 @@ show:
 		if(fit_asm.Read(model_name) == false)
 			return -1;
 
-		meanShape = fit_asm.GetModel()->GetMeanShape();
-		nPoints = meanShape.NPoints();
+		asm_shape meanShape = fit_asm.GetModel()->GetMeanShape();
+		int nPoints = meanShape.NPoints();
 
 		string filename = menu1(image, userName);
 		if(filename == "Create New Expression Class"){
