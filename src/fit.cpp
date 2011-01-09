@@ -1,6 +1,6 @@
 /**
 
-Contributions by Ismail Ari
+Contributions by Ismail Ari, Onur Alsaran
 
 Copyright (c) 2008-2010 by Yao Wei <njustyw@gmail.com>, all rights reserved.
 */
@@ -9,6 +9,7 @@ Copyright (c) 2008-2010 by Yao Wei <njustyw@gmail.com>, all rights reserved.
 #include <string>
 #include <iostream>
 #include <conio.h>
+#include <direct.h>
 
 #include "asmfitting.h"
 #include "vjfacedetect.h"
@@ -350,8 +351,6 @@ void track(IplImage* img){
 }
 
 int write_features(string filename, int j, int numFeats, IplImage* img){
-	
-
 	CvScalar expColor = cvScalar(0,0,0);
 	cvFlip(img, NULL, 1);
 	
@@ -401,7 +400,7 @@ int select(int selection, int range){
 		selection += range;
 	}
 	else if(deneme == 27){
-		exit(0); //düzgün method bul
+		exit(0);
 	}
 	return selection;
 }
@@ -422,7 +421,6 @@ int selectionMenu(IplImage* img, string title, vector<string> lines){
 		cvRectangle(print, cvPoint(0, current-4+selection*step), cvPoint(319, current-7+selection*step), mark, 12);
 		
 		for(int i=0 ; i<range; i++){
-			cout << lines.at(i).c_str() << endl;
 			cvPutText(print, lines.at(i).c_str(), cvPoint(5, current), &font, expColor);
 			current += step;
 		}
@@ -435,8 +433,170 @@ int selectionMenu(IplImage* img, string title, vector<string> lines){
 	}while(1);
 }
 
-string createUser(){
-	return "";
+string getKey(string word, char key){
+	if(key == 27){			
+		exit(1);
+	}
+	else if(key == 8 && word.size()>0){
+		word.pop_back();
+	}
+	else if(word.size()<10 && ((key>='a' && key<='z') || (key>='A' && key<='Z') || (key>='0' && key<='9' || (key=='_')))){
+		word.push_back(key);
+	}
+	return word;
+}
+
+bool fitImage(IplImage *image, char *pts_name, char* model_name, int n_iteration, bool show_result){
+	asmfitting fit_asm;
+	if(fit_asm.Read(model_name) == false)
+		exit(0);
+
+	int nFaces;
+	asm_shape *shapes = NULL, *detshapes = NULL;
+		
+	// step 1: detect face
+	bool flag = detect_all_faces(&detshapes, nFaces, image);
+		
+	// step 2: initialize shape from detect box
+	if(flag){
+		shapes = new asm_shape[nFaces];
+		for(int i = 0; i < nFaces; i++){
+			InitShapeFromDetBox(shapes[i], detshapes[i], fit_asm.GetMappingDetShape(), fit_asm.GetMeanFaceWidth());
+		}
+	}
+	else {
+		//fprintf(stderr, "This image does not contain any faces!\n");
+		return false;
+	}
+		
+	// step 3: image alignment fitting
+	fit_asm.Fitting2(shapes, nFaces, image, n_iteration);
+
+	// step 4: draw and show result in GUI
+	for(int i = 0; i < nFaces; i++){
+		fit_asm.Draw(image, shapes[i]);
+		save_shape(shapes[i], pts_name);
+	}
+	// Skipping pose parameters computation
+		
+	if(showTrackerGui && show_result) {
+		cvNamedWindow("Fitting", 1);
+		cvShowImage("Fitting", image);
+		cvWaitKey(0);			
+		cvReleaseImage(&image);		
+	}
+
+	// step 5: free resource
+	delete[] shapes;
+	free_shape_memeory(&detshapes);
+	return true;
+}
+
+bool takePhoto(int counter, bool printCounter, string folder){
+	CvScalar expColor = cvScalar(0,0,0);
+	while(1){
+		IplImage* image = read_from_camera();
+		cvFlip(image, NULL, 1);
+		
+		char key = cvWaitKey(20);
+		if(key==32 || key==13){
+			std::ostringstream imageName, ptsName, xmlName;
+			imageName << folder << "/" << counter << ".jpg";
+			ptsName << folder << "/" << counter << ".pts";
+			xmlName << folder << "/" << counter << ".xml";
+
+			IplImage* temp = cvCreateImage( cvSize(image->width, image->height ), image->depth, image->nChannels );
+			cvCopy(image, temp);
+
+
+			if(fitImage(image, strdup(ptsName.str().c_str()), "../users/generic/generic.amf", 30, false)){
+				cvSaveImage(imageName.str().c_str(), temp);
+				string command = "python ../annotator/converter.py pts2xml " + ptsName.str() + " " + xmlName.str();
+				system(command.c_str());
+				cvShowImage("Photo", temp);
+				return true;
+			}
+		}
+		else if(key == 27){
+			cvDestroyWindow(TRACKER_WINDOW_NAME);
+			cvDestroyWindow("Photo");
+			//cvDestroyWindow("Features Taken:");
+			return false;
+		}
+
+		cvPutText(image, "Press ENTER or SPACE to take photos.", cvPoint(5, 12), &font, expColor);
+		cvPutText(image, "To finish taking photos press ESCAPE.", cvPoint(5, 27), &font, expColor);
+		
+		if(printCounter){
+			std::ostringstream counterText;
+			counterText << "Number of photos taken: " << counter;
+			cvPutText(image, counterText.str().c_str(), cvPoint(5, 42), &font, expColor);
+		}
+		cvShowImage(TRACKER_WINDOW_NAME, image);
+	}
+	
+}
+
+void takePhotos(string folder){
+	int counter = 0;
+	while(takePhoto(counter, true, folder)){
+		counter++;
+	};
+}
+
+void fineTune(string imageFolder){
+	string command = "python ../annotator/annotator.py " + imageFolder;
+	system(command.c_str());
+	
+	filelists conv = ScanNSortDirectory(imageFolder.c_str(), ".xml");
+	for(int i=0 ; i<conv.size() ; i++){
+		string ptsName = conv.at(i).substr(0, conv.at(i).size()-4) + ".pts";
+		command = "python ../annotator/converter.py xml2pts " + conv.at(i) + " " + ptsName;
+		system(command.c_str());
+	}
+}
+
+string createUser(IplImage* img){
+	CvScalar expColor = cvScalar(0,0,0);
+	CvScalar mark = cvScalar(255,255,0);
+	IplImage* print = cvCreateImage( cvSize(img->width, img->height ), img->depth, img->nChannels );
+	int step = 15, current = 12;
+	string userName;
+	char key; 
+	do{
+		cvCopy(img, print);
+		cvPutText(print, "Enter user name to create a new user.", cvPoint(5, current), &font, expColor);
+		cvPutText(print, userName.c_str(), cvPoint(5, current+step), &font, expColor);
+		cvShowImage(TRACKER_WINDOW_NAME, print);
+		key = cvWaitKey();
+		if(key != 13){
+			userName = getKey(userName, key);
+		}	
+		else if(userName.size() > 0){	//filename empty deðilse yap
+			break;
+		}		
+	}while(1);
+	cout << userName;
+
+
+	//create directories
+	string userFolder = "../users/" + userName;
+	string imageFolder = userFolder + "/photos";
+	mkdir(userFolder.c_str());
+	mkdir(imageFolder.c_str());
+	
+	//take photos, save photos, pts, xml
+	takePhotos(imageFolder);
+
+	//fine tuning
+	fineTune(imageFolder);
+
+	//create amf file
+	string command ="..\\bin\\build.exe -p 4 -l 5 " + imageFolder + " jpg pts ../cascades/haarcascade_frontalface_alt2.xml " + userFolder + "/" +  userName;
+	cout << endl << command << endl;
+	system(command.c_str());
+
+	return userName;
 }
 
 string selectUser(IplImage* img){
@@ -456,19 +616,6 @@ string menu1(IplImage* img, string userName){	//select to create or read class
 	files.push_back("Create New Expression Class");
 	int selection = selectionMenu(img, "Select or Create Expression Class", lines);
 	return files.at(selection);
-}
-
-string getKey(string word, char key){
-	if(key == 27){			
-		exit(1);
-	}
-	else if(key == 8 && word.size()>0){
-		word.pop_back();
-	}
-	else if(word.size()<10 && ((key>='a' && key<='z') || (key>='A' && key<='Z') || (key>='0' && key<='9' || (key=='_')))){
-		word.push_back(key);
-	}
-	return word;
 }
 
 string createClassMenu(IplImage* img, string userName){
@@ -661,60 +808,12 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 
-		double t = (double)cvGetTickCount();
-		int nFaces;
-		asm_shape *shapes = NULL, *detshapes = NULL;
-		
-		// step 1: detect face
-		bool flag =detect_all_faces(&detshapes, nFaces, image);
-		
-		// step 2: initialize shape from detect box
-		if(flag)
-		{
-			shapes = new asm_shape[nFaces];
-			for(int i = 0; i < nFaces; i++)
-			{
-				InitShapeFromDetBox(shapes[i], detshapes[i], fit_asm.GetMappingDetShape(), fit_asm.GetMeanFaceWidth());
-			}
-		}
-		else 
-		{
-			fprintf(stderr, "This image does not contain any faces!\n");
-			exit(0);
-		}
-		
-		// step 3: image alignment fitting
-		fit_asm.Fitting2(shapes, nFaces, image, n_iteration);
-		
-		t = ((double)cvGetTickCount() -  t )/  (cvGetTickFrequency()*1000.);
-		if(PRINT_TIME_TICKS)
-			printf("Time spent: %.2f millisec\n", t);
-			
-		// step 4: draw and show result in GUI
-		for(int i = 0; i < nFaces; i++)
-		{
-			fit_asm.Draw(image, shapes[i]);
-			char* shape_output_filename = filename;			//sadece 1 kiþi için kaydediyor bu þekilde, çok kiþi için istersek annotator kodunu deðiþtirmemiz de gerekir.
-			shape_output_filename[strlen(shape_output_filename)-3]='p';
-			shape_output_filename[strlen(shape_output_filename)-2]='t';
-			shape_output_filename[strlen(shape_output_filename)-1]='s';
-			save_shape(shapes[i], shape_output_filename);
-			if(shape_output_filename != NULL) {
-				save_shape(shapes[i], shape_output_filename);
-			}
-		}
-		// Skipping pose parameters computation
-		
-		if(showTrackerGui) {
-			cvNamedWindow("Fitting", 1);
-			cvShowImage("Fitting", image);
-			cvWaitKey(0);			
-			cvReleaseImage(&image);		
-		}
+		char* shape_output_filename = filename;
+		shape_output_filename[strlen(shape_output_filename)-3]='p';
+		shape_output_filename[strlen(shape_output_filename)-2]='t';
+		shape_output_filename[strlen(shape_output_filename)-1]='s';
 
-		// step 5: free resource
-		delete[] shapes;
-		free_shape_memeory(&detshapes);
+		fitImage(image, shape_output_filename, model_name, n_iteration, true);
 	}
 
 	// case 2: process video, here we assume that the video contains only one face,
@@ -847,6 +946,9 @@ show:
 	// case 3: process camera
 	else if(use_camera)
 	{
+		if(open_camera(0, CAM_WIDTH, CAM_HEIGHT) == false)
+			return -1;
+		
 		int numFeats = 0;
 		boolean create = false;
 		IplImage* image; 
@@ -856,7 +958,7 @@ show:
 		
 		string userName = selectUser(image);
 		if(userName == "Create New User"){
-			userName = createUser();
+			userName = createUser(image);
 		}
 
 		model_name = strdup(("../users/" + userName + "/" + userName + ".amf").c_str());
@@ -877,8 +979,6 @@ show:
 		int countFramesUnderThreshold = 0; 
 		int j = 0, key;
 				
-		if(open_camera(0, CAM_WIDTH, CAM_HEIGHT) == false)
-			return -1;
 		
 		asm_shape shapes[N_SHAPES_FOR_FILTERING]; // Will be used for median filtering		//NERDEEEE???
 		asm_shape shapeCopy, shapeAligned;
