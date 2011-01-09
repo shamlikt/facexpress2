@@ -982,18 +982,9 @@ show:
 		
 		asm_shape shapes[N_SHAPES_FOR_FILTERING]; // Will be used for median filtering		//NERDEEEE???
 		asm_shape shapeCopy, shapeAligned;
-		//cv::Mat shapeParams, poseParams;
-		//shapeParams.create(1, nPoints*2, sampleMat.type());
-		//poseParams.create(1, maxComponents, sampleMat.type());
-
-		
-		
 
 		while(1)
 		{
-			double t = (double)cvGetTickCount();	//DURSUN MU???
-			if(PRINT_TIME_TICKS)
-				printf("Tracking frame %04i: ", j);
 
 			// NOTE: when the parameter is set 1, we can read from camera
 			image = read_from_camera();
@@ -1067,10 +1058,6 @@ show2:
 			}
 
 			j++;
-			t = ((double)cvGetTickCount() -  t )/  (cvGetTickFrequency()*1000.);
-			if(PRINT_TIME_TICKS)
-				printf("Time spent: %.2f millisec\n", t);
-
 		}
 		close_camera();
 	}
