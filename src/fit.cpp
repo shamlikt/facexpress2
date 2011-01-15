@@ -700,17 +700,18 @@ int main(int argc, char *argv[])
 	char* model_name = "../users/generic/generic.amf";
 	//char* shape_model_name = NULL;
 	char* cascade_name = "../cascades/haarcascade_frontalface_alt2.xml";
-	char* filename = NULL;
+	char* VIfilename = NULL;
+	char* class_name = NULL;
 	char* shape_output_filename = NULL;
 	char* pose_output_filename = NULL;
 	char* features_output_filename = NULL;
-	int use_camera = 0;
+	char* expressions_output_filename = NULL;
+	int use_camera = 1;
 	int image_or_video = -1;
 	int i;
 	int n_iteration = 30;
 	int maxComponents = 10;
 
-	if(1 == argc)	usage_fit();
 	for(i = 1; i < argc; i++)
 	{
 		if(argv[i][0] != '-') usage_fit();
@@ -727,31 +728,27 @@ int main(int argc, char *argv[])
 			cascade_name = argv[i];
 			break;
 		case 'i':
-			if(image_or_video >= 0 || use_camera)
-			{
-				fprintf(stderr, "only process image/video/camera once\n");
-				usage_fit();
-			}
-			filename = argv[i];
-			image_or_video = 'i';
-			break;
-		case 'v':
-			if(image_or_video >= 0 || use_camera)
-			{
-				fprintf(stderr, "only process image/video/camera once\n");
-				usage_fit();
-			}
-			filename = argv[i];
-			image_or_video = 'v';
-			break;
-		case 'c':
 			if(image_or_video >= 0)
 			{
 				fprintf(stderr, "only process image/video/camera once\n");
 				usage_fit();
 			}
-			use_camera = 1;
-			i--;		//bu eklendi(bug düzelsin diye)
+			VIfilename = argv[i];
+			image_or_video = 'i';
+			use_camera = 0;
+			break;
+		case 'v':
+			if(image_or_video >= 0)
+			{
+				fprintf(stderr, "only process image/video/camera once\n");
+				usage_fit();
+			}
+			VIfilename = argv[i];
+			image_or_video = 'v';
+			use_camera = 0;
+			break;
+		case 'c':
+			class_name = argv[i];
 			break;
 		case 'H':
 			usage_fit();
@@ -765,6 +762,9 @@ int main(int argc, char *argv[])
 			pose_output_filename = argv[i];		//break???
 		case 'F':
 			features_output_filename = argv[i];
+			break;
+		case 'E':
+			expressions_output_filename = argv[i];
 			break;
 		case 'g':
 			showTrackerGui = atoi(argv[i]);
@@ -798,21 +798,23 @@ int main(int argc, char *argv[])
 
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.4, 0.4, 0, 1, CV_AA);
 
-	// case 1: process image
+	// case 1: process image, here we assume that the video contains only one face,
+	// if not, we process with the most central face
 	if(image_or_video == 'i')
 	{
-		IplImage * image = cvLoadImage(filename, 1);
+		IplImage * image = cvLoadImage(VIfilename, 1);
 		if(image == 0)
 		{
-			fprintf(stderr, "Can not Open image %s\n", filename);
+			fprintf(stderr, "Can not Open image %s\n", VIfilename);
 			exit(0);
 		}
 
-		char* shape_output_filename = filename;
-		shape_output_filename[strlen(shape_output_filename)-3]='p';
-		shape_output_filename[strlen(shape_output_filename)-2]='t';
-		shape_output_filename[strlen(shape_output_filename)-1]='s';
-
+		if(shape_output_filename == NULL){
+			char* shape_output_filename = VIfilename;
+			shape_output_filename[strlen(shape_output_filename)-3]='p';
+			shape_output_filename[strlen(shape_output_filename)-2]='t';
+			shape_output_filename[strlen(shape_output_filename)-1]='s';
+		}
 		fitImage(image, shape_output_filename, model_name, n_iteration, true);
 	}
 
@@ -828,9 +830,9 @@ int main(int argc, char *argv[])
 		/* NOTE: the image must not be released, it will be dellocated automatically
 		by the class asm_cam_or_avi*/
 		int j, key;
-		FILE *fpShape, *fpPose, *fpFeatures;
+		FILE *fpShape, *fpPose, *fpFeatures, *fpExpressions;
 	
-		frame_count = open_video(filename);
+		frame_count = open_video(VIfilename);
 		if(frame_count == -1)	return false;
 
 		if(shape_output_filename != NULL) {
@@ -856,6 +858,15 @@ int main(int argc, char *argv[])
 			
 			if (fpFeatures == NULL) {
 				fprintf(stderr, "Can't open output file %s!\n", features_output_filename);
+				exit(1);
+			}
+		}
+
+		if(expressions_output_filename != NULL) {
+			fopen_s(&fpExpressions, expressions_output_filename, "w");
+			
+			if (fpExpressions == NULL) {
+				fprintf(stderr, "Can't open output file %s!\n", expressions_output_filename);
 				exit(1);
 			}
 		}
@@ -915,20 +926,44 @@ int main(int argc, char *argv[])
 			}
 
 			extract_features_and_display(image, shapeCopy);
-			if(j < FRAME_TO_START_DECISION) initialize(image, j);
-			if(j == FRAME_TO_START_DECISION) normalizeFeatures(image);
-			if(j >= FRAME_TO_START_DECISION) track(image);
-//			if(shape_output_filename != NULL) write_vector(shapeParams, fpShape);
-//			if(pose_output_filename != NULL) write_vector(poseParams, fpPose);
-			if(features_output_filename != NULL) write_vector(features, fpFeatures);
+			if(j < FRAME_TO_START_DECISION){
+				initialize(image, j);
+			}
+			else if(j == FRAME_TO_START_DECISION){	
+				normalizeFeatures(image);
+				read_config_from_file(class_name);
+				
+				if(expressions_output_filename != NULL){
+					fprintf(fpExpressions, "FrameNo");
+					for(i=0; i<N_EXPRESSIONS-1; i++){
+						fprintf(fpExpressions, "%11s", EXP_NAMES[i]);
+					}
+					fprintf(fpExpressions, "%11s\n", EXP_NAMES[i]);
+				}
+			} 
+			else{	
+				track(image);										
 
+				//if(shape_output_filename != NULL) write_vector(shapeParams, fpShape);
+				//if(pose_output_filename != NULL) write_vector(poseParams, fpPose);
+				if(features_output_filename != NULL) write_vector(features, fpFeatures);
+				if(expressions_output_filename != NULL) write_expressions(expressions, fpExpressions, j);
+			}
+			cout<<j<<endl;
+																		
+			if(flagShape && showShape){ 
+				cvFlip(image, NULL, 1);
+				fit_asm.Draw(image, shapeCopy);
+				cvFlip(image, NULL, 1);
+			}
 
+			cvShowImage(TRACKER_WINDOW_NAME, image);
 			// fit_asm.Draw(image, shapeCopy);
 
 show:
 			// fit_asm.Draw(edges, shape);
 
-			key = cv::waitKey(20);
+			key = cv::waitKey(10);
 			if(key > 0)
 				break;
 			
@@ -940,9 +975,10 @@ show:
 		if(shape_output_filename != NULL) fclose(fpShape);
 		if(pose_output_filename != NULL) fclose(fpPose);
 		if(features_output_filename != NULL) fclose(fpFeatures);
+		if(expressions_output_filename != NULL) fclose(fpExpressions);
 		close_video();
 	}
-
+	
 	// case 3: process camera
 	else if(use_camera)
 	{
@@ -965,9 +1001,6 @@ show:
 		if(fit_asm.Read(model_name) == false)
 			return -1;
 
-		asm_shape meanShape = fit_asm.GetModel()->GetMeanShape();
-		int nPoints = meanShape.NPoints();
-
 		string filename = menu1(image, userName);
 		if(filename == "Create New Expression Class"){
 			create = true;
@@ -980,7 +1013,7 @@ show:
 		int j = 0, key;
 				
 		
-		asm_shape shapes[N_SHAPES_FOR_FILTERING]; // Will be used for median filtering		//NERDEEEE???
+		asm_shape shapes[N_SHAPES_FOR_FILTERING]; // Will be used for median filtering
 		asm_shape shapeCopy, shapeAligned;
 
 		while(1)

@@ -136,6 +136,19 @@ void write_vector(cv::Mat mat, FILE* fp) {
 	for(i=0; i<mat.cols-1; i++)
 		fprintf(fp, "%.3f,", mat.at<float>(0,i));
 	fprintf(fp, "%.3f\n", mat.at<float>(0,i));
+}
+
+void write_expressions(cv::Mat mat, FILE* fp, int frameNo) {
+	int i;
+	if (fp == NULL) {
+		fprintf(stderr, "Can't process output file %s!\n");
+		exit(1);
+	}
+	fprintf(fp, "%.5d: ", frameNo);
+	for(i=0; i<N_EXPRESSIONS-1; i++){
+		fprintf(fp, "       %.2f", mat.at<double>(0,i));
+	}
+	fprintf(fp, "       %.2f\n", mat.at<double>(0,i));
 
 }
 
