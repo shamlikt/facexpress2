@@ -9,10 +9,10 @@ REM fitD.exe -m ismail4-p5.amf -h haarcascade_frontalface_alt2.xml -i C:\Users\O
 REM fitD.exe -m ismail4-p5.amf -h haarcascade_frontalface_alt2.xml -i C:\Users\Onur\Desktop\yeni\Goruntu008.jpg
 
 REM echo off
-set haarcascade=haarcascade_frontalface_alt2.xml
-set model=onurp4l5.amf
+set haarcascade=..\cascades\haarcascade_frontalface_alt2.xml
+set model=..\users\onur\onur.amf
 REM set shape_model=C:\Users\ismail\eNTERFACE10\data\models\ismail.xml
-set fit=fit.exe
+set fit=..\bin\fit.exe
 
 set input_folder=C:\Users\Onur\Desktop\onurres\ekstra\
 set image_extension=.jpg

@@ -16,7 +16,8 @@ REM fit.exe -m ismaildata.amf -h haarcascade_frontalface_alt2.xml -c
 
 REM fit.exe -m my.amf -h haarcascade_frontalface_alt2.xml -v myvideo.avi
 
-..\bin\fit.exe -m ..\models\onurp4l5.amf -h ..\cascades\haarcascade_frontalface_alt2.xml -c -g 1 -e 0 -r 0 -f 0 -t 1
+REM ..\bin\fit.exe -m ..\models\onurp4l5.amf -h ..\cascades\haarcascade_frontalface_alt2.xml -c -g 1 -e 0 -r 0 -f 0 -t 1
+..\bin\fit.exe -v C:/Users/Onur/Videos/test.avi -c ../users/onur/onur6.txt -m ../users/onur/onur.amf -E C:/Users/Onur/Videos/test.txt 
 
 REM echo ## face tracking from live camera ##
 REM fit.exe -m my.amf -h haarcascade_frontalface_alt2.xml
