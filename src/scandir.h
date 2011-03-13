@@ -6,6 +6,7 @@ typedef vector<string> filelists;
 #include <sys/types.h>
 #include <sys/stat.h>
 
+//search for s2 in s1
 static int match(const char* s1, const char* s2)
 {
 	int diff = strlen(s1) - strlen(s2);
@@ -96,7 +97,7 @@ static filelists ScanNSortDirectory(const char*path, const char*extension)
     return allfiles;
 }
 
-
+// Scan all subdirectories  under "path" directory and sort them
 static filelists directoriesOf(const char*path)
 {
 #ifdef WIN32

@@ -5,6 +5,7 @@
 
 using namespace std;
 
+//prints how to enter the command line arguments
 static void usage_fit()		//gerektiðinde deðiþtir
 {
 	printf("Usage: fit -m model_file -h cascade_file "		//shape model falan eklenmesi lazým
@@ -12,7 +13,11 @@ static void usage_fit()		//gerektiðinde deðiþtir
 	exit(0);
 }
 
-/* Save shape to a pts file */
+/* 
+Save a shape to a pts file
+@param shape shape to save
+@param filename path of the file to write the shape in 
+*/
 void save_shape(asm_shape shape, char* filename) {
 
 	FILE *fp;
@@ -37,6 +42,12 @@ int compare (const void * a, const void * b)
   return (int)( *(float*)a - *(float*)b );
 }
 
+/*
+return median of an array
+@param arr array to get median of
+@param size size of array
+@return median value
+*/
 float get_median(float arr[], int size)
 {
 	int middle = size/2;
@@ -47,6 +58,12 @@ float get_median(float arr[], int size)
 	return median;
 }
 
+/*
+calculate median shape by using float get_median() function
+@param shapes array of shapes to get median of
+@param nShapes size of the array of shapes
+@return median shape
+*/
 asm_shape get_median(asm_shape shapes[], int nShapes) {
 	asm_shape shape = shapes[nShapes-1];
 	int i, j;
@@ -71,6 +88,12 @@ asm_shape get_median(asm_shape shapes[], int nShapes) {
 	return shape;
 }
 
+/*
+calculate mean shape
+@param shapes array of shapes to get mean of
+@param nShapes size of the array of shapes
+@return mean shape
+*/
 asm_shape get_mean(asm_shape shapes[], int nShapes) {
 	asm_shape shape = shapes[nShapes-1];
 	int i, j;
@@ -90,6 +113,12 @@ asm_shape get_mean(asm_shape shapes[], int nShapes) {
 	return shape;
 }
 
+/*
+calculate weighted mean shape, last shapes have more weights
+@param shapes array of shapes to get mean of
+@param nShapes size of the array of shapes
+@return weighted mean shape
+*/
 asm_shape get_weighted_mean(asm_shape shapes[], int nShapes) {
 	asm_shape shape = shapes[nShapes-1];
 	int i, j;
@@ -112,6 +141,11 @@ asm_shape get_weighted_mean(asm_shape shapes[], int nShapes) {
 	return shape;
 }
 
+/*
+write shape to a file
+@param shape shape to write to a file
+@param fp pointer to the file to write the shape on
+*/
 void write_shape(asm_shape shape, FILE* fp) {
 	if (fp == NULL) {
 		fprintf(stderr, "Can't process output file %s!\n");
@@ -123,6 +157,11 @@ void write_shape(asm_shape shape, FILE* fp) {
 
 }
 
+/*
+write a row vector to a file
+@param mat row vector to write to a file
+@param fp pointer to the file to write the row vector on
+*/
 void write_vector(cv::Mat mat, FILE* fp) {
 	int i;
 	if (fp == NULL) {
@@ -138,6 +177,12 @@ void write_vector(cv::Mat mat, FILE* fp) {
 	fprintf(fp, "%.3f\n", mat.at<float>(0,i));
 }
 
+/*
+write weights of expression classes for a frame to a file
+@param mat expression vector to write to a file
+@param fp pointer to the file to write the row vector on
+@param frameNo number of frame
+*/
 void write_expressions(cv::Mat mat, FILE* fp, int frameNo) {
 	int i;
 	if (fp == NULL) {

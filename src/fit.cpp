@@ -964,7 +964,7 @@ show:
 			// fit_asm.Draw(edges, shape);
 
 			key = cv::waitKey(10);
-			if(key > 0)
+			if(key == 27)
 				break;
 			
 			t = ((double)cvGetTickCount() -  t )/  (cvGetTickFrequency()*1000.);

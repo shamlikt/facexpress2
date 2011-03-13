@@ -15,7 +15,7 @@ int *classLabelArray;
 double *classPointArray;
 cv::Mat classLabels;
 cv::Mat classPoints;
-cv::Mat classDistances;
+//cv::Mat classDistances;
 cv::Mat diff;
 
 
@@ -49,14 +49,8 @@ void read_config_from_file(string filename){
 
 	classLabels = cv::Mat(1, N_POINTS, CV_32SC1, classLabelArray);
 	classPoints = cv::Mat(N_POINTS, N_FEATURES, CV_64FC1, classPointArray);
-	classDistances = cv::Mat(N_POINTS, 1, CV_64FC1);
+	//classDistances = cv::Mat(N_POINTS, 1, CV_64FC1);
 	diff = cv::Mat(1, N_FEATURES, CV_64FC1);
-}
-
-char * str2cca(string a){
-	char* buf = new char[a.size()];
-	sprintf(buf, "%100c", a);
-	return buf;
 }
 
 void config(string filename, int n_expressions, int n_samples, string *exp_names){
@@ -75,7 +69,6 @@ void config(string filename, int n_expressions, int n_samples, string *exp_names
 	EXP_NAMES = new char*[N_EXPRESSIONS];
 	for(int i=0 ; i<N_EXPRESSIONS ; i++){
 		cout<< exp_names[i] << endl;
-		cout<< strdup(exp_names[i].c_str()) << endl;
 		
 		EXP_NAMES[i] = strdup(exp_names[i].c_str());	
 		file << EXP_NAMES[i] << endl;

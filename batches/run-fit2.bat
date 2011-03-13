@@ -14,7 +14,7 @@ set model=..\users\onur\onur.amf
 REM set shape_model=C:\Users\ismail\eNTERFACE10\data\models\ismail.xml
 set fit=..\bin\fit.exe
 
-set input_folder=C:\Users\Onur\Desktop\onurres\ekstra\
+set input_folder=C:\Users\Onur\Desktop\yeniyedek\
 set image_extension=.jpg
 REM set point_extension=.pts
 REM set pose_extension=.pose
